@@ -1,0 +1,61 @@
+set dotenv-load := false
+
+profile := "rg55g1"
+profile_dir := justfile_directory()
+project := profile_dir / "../.."
+build_dir := project / "build"
+image := build_dir / "ultramarine-rg55g1-mainline.raw"
+
+# Build the RG55G1 kernel RPMs. Andaman stages the binary RPMs in
+# build/anda-rpms, where the rg55g1-mainline profile picks them up.
+kernel-rpms:
+    sudo dnf builddep --assumeyes {{project}}/packaging/rpm/kernel-rg55g1/kernel-rg55g1.spec
+    mkdir -p {{build_dir}}/anda-rpms
+    rm -f {{build_dir}}/anda-rpms/kernel-rg55g1*.rpm
+    cd {{project}} && anda build -rrpmbuild --rpm-target aarch64 \
+        packaging/rpm/kernel-rg55g1/pkg
+    for rpm in {{project}}/anda-build/rpm/rpms/kernel-rg55g1*.rpm; do \
+        test -f "$rpm"; install -m 0644 "$rpm" {{build_dir}}/anda-rpms/; \
+    done
+
+# Build the complete GPT image (ESP + root) with mkosi/repart. The board's UEFI
+# firmware loads systemd-boot from the ESP, so no raw bootloader is written.
+mainline-image:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    ls {{build_dir}}/anda-rpms/kernel-rg55g1-core-*.rpm >/dev/null 2>&1 || {
+        echo "no kernel-rg55g1 RPMs in build/anda-rpms; run: just --justfile {{profile_dir}}/justfile kernel-rpms" >&2
+        exit 1
+    }
+    sudo mkosi --directory={{project}} --profile=base,{{profile}},{{profile}}-mainline --force
+    sudo sgdisk -v {{quote(image)}}
+    sha256sum {{quote(image)}}
+
+rootfs: mainline-image
+
+image: mainline-image
+
+summary:
+    mkosi --directory={{project}} --profile=base,{{profile}},{{profile}}-mainline summary
+
+# Write the whole image to a removable card. Example: just flash /dev/sdX
+flash target:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    target={{quote(target)}}
+    test -f {{quote(image)}}
+    test -b "$target" || { echo "not a block device: $target" >&2; exit 1; }
+    test "$(lsblk -dn -o TYPE "$target")" = disk || {
+        echo "target must be a whole disk: $target" >&2; exit 1;
+    }
+    test "$(lsblk -dn -o RM "$target")" = 1 || {
+        echo "target is not marked removable: $target" >&2; exit 1;
+    }
+    ! lsblk -rn -o MOUNTPOINTS "$target" | grep -q . || {
+        echo "target has mounted partitions: $target" >&2; exit 1;
+    }
+    sudo dd if={{quote(image)}} of="$target" bs=16M iflag=fullblock conv=fsync status=progress
+    sudo blockdev --flushbufs "$target"
+    sudo sgdisk -e "$target"
+    sudo sgdisk -v "$target"
+    echo "image written: $target"

@@ -74,6 +74,54 @@ jobs:
           if-no-files-found: error
           path: anda-build/
 
+  kernel-rg55g1:
+    name: kernel-rg55g1 (Andaman RPM)
+    runs-on: ubuntu-24.04-arm
+    container:
+      image: ghcr.io/terrapkg/builder:f44
+      options: --privileged
+    timeout-minutes: 180
+    env:
+      SCCACHE_GHA_ENABLED: "true"
+      CC: "sccache gcc"
+      HOSTCC: "sccache gcc"
+      HOSTCXX: "sccache g++"
+    steps:
+      - name: Check out sources
+        uses: actions/checkout@v4
+
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.10
+
+      - name: Install RPM build tools
+        run: |
+          dnf install --assumeyes dnf-plugins-core git python3
+
+      - name: Install kernel build dependencies
+        run: |
+          dnf builddep --assumeyes packaging/rpm/kernel-rg55g1/kernel-rg55g1.spec
+
+      - name: Build kernel RPMs with Andaman
+        run: |
+          anda build -rrpmbuild packaging/rpm/kernel-rg55g1
+
+      - name: Show kernel sccache statistics
+        if: always()
+        run: sccache --show-stats
+
+      - name: Locate kernel build artifacts
+        run: |
+          find anda-build -type f \
+            \( -name '*.rpm' -o -name '*.buildinfo' -o -name '*.src.rpm' \) \
+            -print 2>/dev/null || true
+
+      - name: Upload kernel RPMs
+        uses: actions/upload-artifact@v4
+        with:
+          name: kernel-rg55g1-rpms-${{ github.sha }}
+          if-no-files-found: error
+          path: anda-build/
+
   bsp-custom:
     name: kernel-tg5050-bsp-custom (Andaman RPM)
     runs-on: ubuntu-24.04-arm

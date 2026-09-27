@@ -1,0 +1,11 @@
+#!/bin/bash
+set -euo pipefail
+
+# Board-specific service state. Generic appliance state comes from the base
+# profile; mkosi runs each profile's hooks in profile order.
+systemctl enable rg55g1-usb-gadget.service
+systemctl enable serial-getty@ttyMSM0.service
+systemctl enable serial-getty@ttyGS0.service
+systemctl enable bluetooth.service
+systemctl enable inputplumber.service
+chmod 0755 /usr/local/libexec/rg55g1-usb-gadget

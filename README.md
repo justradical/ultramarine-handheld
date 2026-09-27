@@ -4,6 +4,10 @@ Ultramarine Linux for the TrimUI Smart Pro S (TG5050 / Allwinner A523). The
 working mainline path uses pinned U-Boot and TG5050 kernel integration sources,
 a mkosi-built systemd initrd, and an ARM64 Fedora/Ultramarine root filesystem.
 
+The Anbernic RG 55G1 (Qualcomm SM4450, UEFI boot) is supported by the
+`rg55g1` and `rg55g1-mainline` profiles; see
+[`mkosi.profiles/rg55g1/README.md`](mkosi.profiles/rg55g1/README.md).
+
 ## boot chain
 
 - BootROM loads mainline SPL from LBA 256.
