@@ -1,0 +1,14 @@
+#!/bin/bash
+set -euo pipefail
+
+# Board-specific account and policy setup. The generic appliance user comes
+# from the base profile.
+
+# SSH StrictModes requires root-owned configuration even when the overlay was
+# staged by an unprivileged build user.
+chmod 0644 /etc/ssh/sshd_config.d/10-rg55g1-rescue.conf
+
+# Drop every stock TuneD profile: the appliance only uses its own five
+# (balanced, balanced-battery, marina-minimal, powersave,
+# throughput-performance) from /etc/tuned/profiles.
+rm -rf /usr/lib/tuned/profiles
