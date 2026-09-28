@@ -83,7 +83,7 @@ bsp-sd-rootfs-image: bsp-sd-rootfs
 
 # Build the vendor-contract four-partition BSP SD image without changing the
 # existing mainline image target.
-bsp-sd-image: bsp-sd-env bsp-sd-rootfs-image
+bsp-sd-image: bsp-sd-env bsp-initrd bsp-sd-rootfs-image
     {{profile_dir}}/image/assemble-sd-image
 
 # Build the source-owned custom BSP kernel and matching module RPMs. Andaman
@@ -173,6 +173,13 @@ mainline-uboot:
 
 systemd-initrd:
     mkosi --directory={{base_dir}}/systemd-initrd --force build
+
+# Distro-style systemd initramfs for the BSP/vendor boot path. This one is
+# loaded from p1 by the vendor U-Boot environment (load_initrd=load mmc 0:1)
+# and passed to bootm as an external ramdisk - it must never live inside the
+# p3 Android boot container.
+bsp-initrd:
+    mkosi --directory={{base_dir}}/systemd-initrd-bsp --force build
 
 mainline-initramfs:
     {{profile_dir}}/board/mainline-initramfs/build

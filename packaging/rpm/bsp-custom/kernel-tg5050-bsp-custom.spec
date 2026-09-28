@@ -1,6 +1,6 @@
 Name:           kernel-tg5050-bsp-custom
 Version:        5.15.147
-Release:        14.tina.tg5050%{?dist}
+Release:        15.tina.tg5050%{?dist}
 Summary:        custom vendor BSP kernel for TG5050
 License:        GPL-2.0-only
 URL:            https://gitlab.com/tina5.0_aiot/lichee/linux-5.15
@@ -183,6 +183,9 @@ scripts/config --file out/.config \
     --disable FRAMEBUFFER_CONSOLE --module ZSMALLOC --module ZRAM \
     --enable CRYPTO_ZSTD --enable ZRAM_DEF_COMP_ZSTD --module EROFS_FS \
     --enable BTRFS_FS --enable BTRFS_FS_POSIX_ACL \
+    --enable BLK_DEV_INITRD \
+    --enable RD_GZIP --enable RD_ZSTD \
+    --enable DEVTMPFS --enable DEVTMPFS_MOUNT \
     --enable INPUT_MISC --enable INPUT_EVDEV --module INPUT_UINPUT \
     --module INPUT_PWM_VIBRA --enable HWMON --module SENSORS_PWM_FAN \
     --enable AW_LEDC \

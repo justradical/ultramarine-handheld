@@ -43,10 +43,15 @@ if data[:8] != b"ANDROID!":
     raise SystemExit("p3 container is not an Android boot image")
 ramdisk_size = struct.unpack_from("<I", data, 16)[0]
 if ramdisk_size == 0:
-    raise SystemExit("p3 source already has no embedded ramdisk")
-struct.pack_into("<I", data, 16, 0)
-dst.write_bytes(data)
-print(f"disabled p3 embedded ramdisk: {ramdisk_size} -> 0")
+    # Stock p3 already has an empty ramdisk slot: the initrd lives in p1 and
+    # is passed to bootm there, so nothing to strip. Still produce the
+    # assembled p3 artifact the image layout expects.
+    print("p3 embedded ramdisk already empty (0); passing through")
+    dst.write_bytes(data)
+else:
+    struct.pack_into("<I", data, 16, 0)
+    dst.write_bytes(data)
+    print(f"disabled p3 embedded ramdisk: {ramdisk_size} -> 0")
 PY
 fi
 rm -rf "$assets"
