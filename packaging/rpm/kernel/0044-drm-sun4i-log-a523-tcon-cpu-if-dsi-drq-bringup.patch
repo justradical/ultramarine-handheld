@@ -1,0 +1,127 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Kita <kita@tg5050>
+Date: Sun, 28 Sep 2026 00:00:00 +0000
+Subject: [PATCH] drm/sun4i: log the A523 TCON CPU-IF / DSI DRQ state (bring-up)
+
+The A523 panel is driven a frame at a time through the TCON CPU
+interface (8080 mode, DSI source), and the per-frame completion is
+TCON0 TRI_FINISH. On our board the whole pipeline binds and every
+register block is programmed, but vblank never fires and every atomic
+commit times out, so the frame push from mixer to TCON to DSI is not
+completing - and it cannot be told from userspace which link stalls,
+because /dev/mem is blocked by CONFIG_STRICT_DEVMEM and none of these
+registers are exposed through the drivers' regmaps.
+
+Log the trigger state at the end of the CPU-IF setup (CPU_IF, GINT0,
+CTL, the TRI0/TRI1/TRI2 block programming, IO_TRI) and poll the TCON
+debug scanline counter a few times, so it is visible whether the counter
+advances (frames are being pushed) or stays frozen (the mixer never
+feeds the TCON). Also log the DSI side's TCON_DRQ/TRANS_START.
+
+This is bring-up instrumentation only: it reads registers the code has
+just written and prints them, changes no behaviour, and is intended to
+be dropped once the path is proven.
+
+Signed-off-by: Kita <kita@tg5050>
+---
+--- a/drivers/gpu/drm/sun4i/sun4i_tcon.c
++++ b/drivers/gpu/drm/sun4i/sun4i_tcon.c
+@@ -7,6 +7,7 @@
+  */
+ 
+ #include <linux/component.h>
++#include <linux/delay.h>
+ #include <linux/ioport.h>
+ #include <linux/media-bus-format.h>
+ #include <linux/module.h>
+@@ -420,6 +421,45 @@
+ 	/* Enable the output on the pins */
+ 	regmap_write(tcon->regs, SUN4I_TCON0_IO_TRI_REG,
+ 		     0xe0000000);
++
++	/*
++	 * Bring-up instrumentation: print the trigger programming and poll
++	 * the debug scanline counter so we can see whether frames are being
++	 * pushed through the CPU interface at all.
++	 */
++	{
++		u32 v_cpu_if, v_gint0, v_ctl, v_tri0, v_tri1, v_tri2;
++		u32 v_io_tri, v_dbg, v_dbg2, i;
++
++		regmap_read(tcon->regs, SUN4I_TCON0_CPU_IF_REG, &v_cpu_if);
++		regmap_read(tcon->regs, SUN4I_TCON_GINT0_REG, &v_gint0);
++		regmap_read(tcon->regs, SUN4I_TCON0_CTL_REG, &v_ctl);
++		regmap_read(tcon->regs, SUN4I_TCON0_CPU_TRI0_REG, &v_tri0);
++		regmap_read(tcon->regs, SUN4I_TCON0_CPU_TRI1_REG, &v_tri1);
++		regmap_read(tcon->regs, SUN4I_TCON0_CPU_TRI2_REG, &v_tri2);
++		regmap_read(tcon->regs, SUN4I_TCON0_IO_TRI_REG, &v_io_tri);
++		regmap_read(tcon->regs, SUN4I_TCON0_DBG_REG, &v_dbg);
++
++		dev_info(tcon->dev,
++			 "CPUIF=%08x GINT0=%08x CTL=%08x IO_TRI=%08x\n",
++			 v_cpu_if, v_gint0, v_ctl, v_io_tri);
++		dev_info(tcon->dev,
++			 "TRI0=%08x TRI1=%08x TRI2=%08x DBG=%08x scanline=%u\n",
++			 v_tri0, v_tri1, v_tri2, v_dbg,
++			 (v_dbg >> SUN4I_TCON0_DBG_SCANLINE_SHIFT) &
++			 SUN4I_TCON0_DBG_SCANLINE_MASK);
++
++		for (i = 0; i < 5; i++) {
++			msleep(20);
++			regmap_read(tcon->regs, SUN4I_TCON0_DBG_REG, &v_dbg2);
++			dev_info(tcon->dev,
++				 "DBG[%u]=%08x scanline=%u tri_finish=%u\n",
++				 i, v_dbg2,
++				 (v_dbg2 >> SUN4I_TCON0_DBG_SCANLINE_SHIFT) &
++				 SUN4I_TCON0_DBG_SCANLINE_MASK,
++				 !!(v_dbg2 & SUN4I_TCON0_DBG_TRI_FINISH));
++		}
++	}
+ }
+ 
+ static void sun4i_tcon0_mode_set_lvds(struct sun4i_tcon *tcon,
+--- a/drivers/gpu/drm/sun4i/sun4i_tcon.h
++++ b/drivers/gpu/drm/sun4i/sun4i_tcon.h
+@@ -197,6 +197,13 @@
+ #define SUN4I_TCON_SAFE_PERIOD_NUM(num)			(((num) & 0xfff) << 16)
+ #define SUN4I_TCON_SAFE_PERIOD_MODE(mode)		((mode) & 0x3)
+ 
++/* Bring-up debug register: on A523 the active scanline and the TRI_FINISH
++ * flag live here (scanline in [27:16]), not in the legacy [11:0] layout. */
++#define SUN4I_TCON0_DBG_REG			0x0fc
++#define SUN4I_TCON0_DBG_SCANLINE_SHIFT		16
++#define SUN4I_TCON0_DBG_SCANLINE_MASK		GENMASK(11, 0)
++#define SUN4I_TCON0_DBG_TRI_FINISH		BIT(0)
++
+ #define SUN4I_TCON_MUX_CTRL_REG			0x200
+ 
+ #define SUN4I_TCON0_LVDS_ANA0_REG		0x220
+--- a/drivers/gpu/drm/sun4i/sun6i_mipi_dsi.c
++++ b/drivers/gpu/drm/sun4i/sun6i_mipi_dsi.c
+@@ -448,6 +448,26 @@
+ 	}
+ 
+ 	regmap_write(dsi->regs, SUN6I_DSI_TCON_DRQ_REG, val);
++
++	/*
++	 * Bring-up instrumentation: show whether the DSI armed the TCON DRQ
++	 * and started its video engine, so a stalled FIFO can be attributed
++	 * to the DSI side versus the mixer/TCON side.
++	 */
++	{
++		u32 v_drq, v_start, v_basic1, v_ctl;
++
++		regmap_read(dsi->regs, SUN6I_DSI_TCON_DRQ_REG, &v_drq);
++		regmap_read(dsi->regs, SUN6I_DSI_TRANS_START_REG, &v_start);
++		regmap_read(dsi->regs, SUN6I_DSI_BASIC_CTL1_REG, &v_basic1);
++		regmap_read(dsi->regs, SUN6I_DSI_CTL_REG, &v_ctl);
++
++		dev_info(dsi->dev,
++			 "burst=%s TCON_DRQ=%08x TRANS_START=%u BASIC_CTL1=%08x CTL=%08x\n",
++			 (device->mode_flags & MIPI_DSI_MODE_VIDEO_BURST) ?
++			 "yes" : "no",
++			 v_drq, v_start, v_basic1, v_ctl);
++	}
+ }
+ 
+ static void sun6i_dsi_setup_inst_loop(struct sun6i_dsi *dsi,

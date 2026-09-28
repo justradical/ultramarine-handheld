@@ -155,6 +155,9 @@ mainline-disk: env mainline-uboot
     fit_size=$(stat -c %s "$fit")
     sudo dd if="$image" bs=512 skip=256 count=$(((spl_size + 511) / 512)) status=none | cmp -n "$spl_size" - "$spl"
     sudo dd if="$image" bs=512 skip=512 count=$(((fit_size + 511) / 512)) status=none | cmp -n "$fit_size" - "$fit"
+    # mkosi sizes the image to the last partition with no room for the backup
+    # GPT; pad first so `sgdisk -e` relocation does not overlap it.
+    sudo truncate -s +2M "$image"
     sudo sgdisk -e "$image"
     sudo sgdisk -v "$image"
 

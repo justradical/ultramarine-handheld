@@ -1,6 +1,6 @@
 Name:           kernel-tg5050
 Version:        7.2.0
-Release:        3.tg5050%{?dist}
+Release:        6.tg5050%{?dist}
 Summary:        Fedora-style alternate mainline kernel for TrimUI Smart Pro S
 License:        GPL-2.0-only
 URL:            https://github.com/torvalds/linux
@@ -50,6 +50,14 @@ Patch1032: 0035-ASoC-sun4i-codec-A523-enable-Line-Out-ramp-and-VRP-LDO.patch
 Patch1033: 0036-mfd-axp20x-restart-the-AXP717-via-SOFT_PWROFF.patch
 Patch1034: 0037-drm-sun4i-tcon-top-park-other-mixer-on-collision.patch
 Patch1035: 0038-drm-sun4i-tcon-set-output-mux-for-dsi-lvds.patch
+# Board DTS deltas live below the autopatch range: they must apply AFTER the
+# Source2 import in %prep overwrites these DTS files (see below).
+Patch1036: 0039-drm-sunxi-sun55i-a523-de33-skip-legacy-sram-claim.patch
+Patch1037: 0040-drm-sun6i-dsi-attach-panel-before-drm-master.patch
+Patch1038: 0041-arm64-dts-sun55i-a523-keep-display0-power-domain-on.patch
+Patch1039: 0042-arm64-dts-sun55i-a523-add-display-engine-node.patch
+Patch1040: 0043-drm-sun4i-tcon-top-open-a523-dsi-gates-in-probe.patch
+Patch1041: 0044-drm-sun4i-log-a523-tcon-cpu-if-dsi-drq-bringup.patch
 
 
 
@@ -135,6 +143,14 @@ for dts in sun55i-a523-trimui-smart-pro-s.dts sun55i-a523.dtsi trimui-de-reconci
     install -D -m 0644 "integration/dts/$dts" "arch/arm64/boot/dts/allwinner/$dts"
 done
 printf '%s\n' 'dtb-$(CONFIG_ARCH_SUNXI) += sun55i-a523-trimui-smart-pro-s.dtb' >> arch/arm64/boot/dts/allwinner/Makefile
+# Board DTS deltas must land after the Source2 import above overwrites these
+# files; anything in the autopatch range touching them is silently discarded.
+%patch -P 1036 -p1
+%patch -P 1037 -p1
+%patch -P 1038 -p1
+%patch -P 1039 -p1
+%patch -P 1040 -p1
+%patch -P 1041 -p1
 
 
 
