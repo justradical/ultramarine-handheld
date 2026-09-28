@@ -1,6 +1,6 @@
 Name:           kernel-tg5050-bsp-custom
 Version:        5.15.147
-Release:        9.tina.tg5050%{?dist}
+Release:        12.tina.tg5050%{?dist}
 Summary:        custom vendor BSP kernel for TG5050
 License:        GPL-2.0-only
 URL:            https://gitlab.com/tina5.0_aiot/lichee/linux-5.15
@@ -68,13 +68,14 @@ BuildRequires: dtc
 
 %global krel 5.15.147
 %global debug_package %{nil}
-# Optional host-tool flags for immutable build hosts. Normal builds get these
-# from BuildRequires: openssl-devel-engine and leave the macro empty.
+# Optional host-tool flags for immutable build hosts. kernel_cryptolibs
+# defaults to -lcrypto (what pkg-config --libs libcrypto reports); override
+# it only when the toolchain needs different host OpenSSL link flags.
 %{!?kernel_hostcflags:%global kernel_hostcflags %{nil}}
 %{!?kernel_hostldflags:%global kernel_hostldflags %{nil}}
 %{!?kernel_pkgconfigpath:%global kernel_pkgconfigpath %{nil}}
 %{!?kernel_cryptocflags:%global kernel_cryptocflags %{nil}}
-%{!?kernel_cryptolibs:%global kernel_cryptolibs %{nil}}
+%{!?kernel_cryptolibs:%global kernel_cryptolibs -lcrypto}
 
 %description
 Boot-tested custom Allwinner A523 vendor-BSP kernel for the TrimUI Smart Pro S.
@@ -187,9 +188,7 @@ scripts/config --file out/.config \
     --enable GPIO_SYSFS \
     --enable KEYBOARD_GPIO \
     --enable AIC_WLAN_SUPPORT --module AIC8800_WLAN_SUPPORT \
-    --module AIC8800_BTLPM_SUPPORT \
-    --module USBIP_CORE --module USBIP_VHCI_HCD \
-    --module UHID
+    --module AIC8800_BTLPM_SUPPORT
 make O="$PWD/out" BSP_TOP="$BSP_TOP" KERNEL_SRC_DIR="$KERNEL_SRC_DIR" \
     ARCH="$ARCH" CROSS_COMPILE="$CROSS_COMPILE" olddefconfig
 make O="$PWD/out" BSP_TOP="$BSP_TOP" KERNEL_SRC_DIR="$KERNEL_SRC_DIR" \
@@ -239,6 +238,13 @@ if [ -x %{_sbindir}/depmod ]; then
 fi
 
 %changelog
+* Sat Sep 26 2026 Cappy Ishihara <cappy@fyralabs.com> - 5.15.147-12.tina.tg5050
+- Revert USBIP/UHID/HIDRAW additions (immediate-wake suspend regression);
+  back to the release-8 driver set. Keeps the -lcrypto host-link default.
+* Sat Sep 26 2026 Cappy Ishihara <cappy@fyralabs.com> - 5.15.147-11.tina.tg5050
+- Enable HIDRAW built-in (bool-only in 5.15) for raw HID device access.
+* Sat Sep 26 2026 Cappy Ishihara <cappy@fyralabs.com> - 5.15.147-10.tina.tg5050
+- Attempted HIDRAW as a module; bool-only in 5.15, so no hidraw.ko shipped.
 * Sat Sep 26 2026 Cappy Ishihara <cappy@fyralabs.com> - 5.15.147-9.tina.tg5050
 - Build USB/IP VHCI host-controller support as modules for USB device sharing.
 - Build UHID as a module for userspace virtual HID devices.

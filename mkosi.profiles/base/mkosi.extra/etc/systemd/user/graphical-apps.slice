@@ -4,5 +4,11 @@ Description=Freezer-capable graphical application workload slice
 [Slice]
 # Foreground apps get priority over the shell UI, while remaining a nested
 # slice that systemd can freeze and thaw as a group.
-CPUWeight=200
-IOWeight=200
+# Games win, everything else contends for scraps: 10x default CFS share
+# (safe preemption by weight, unlike SCHED_FIFO which this non-RT kernel
+# couldn't express per-cgroup anyway). Asset loads get IO priority too,
+# and half the board's RAM is best-effort protected under pressure.
+CPUWeight=1000
+StartupCPUWeight=1000
+IOWeight=1000
+MemoryLow=512M

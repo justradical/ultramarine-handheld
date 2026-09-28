@@ -1,0 +1,5 @@
+# Let user-session SDL/Steam open the InputPlumber emulated Steam Deck
+# (Valve 28de:1205 over vhci). Mirrors what Steam's own udev rules do for
+# real Valve hardware: hidraw defaults to root:root 0600, which HIDAPI in
+# a user session cannot open.
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="28de", MODE="0666"
