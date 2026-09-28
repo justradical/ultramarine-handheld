@@ -1,0 +1,25 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Jernej Skrabec <jernej.skrabec@siol.net>
+Date: Mon Sep 28 12:00:00 2026 +0700
+Subject: [PATCH] drm/sun4i: tcon: set output mux for DSI and LVDS (backport)
+
+Backport from Jernej Skrabec's "drm/sun4i: Assorted display fixes"
+series as merged to drm-misc-next: DSI and LVDS never called the output
+mux setup, so the mixer is not routed to the TCON driving the panel.
+
+---
+ drivers/gpu/drm/sun4i/sun4i_tcon.c | 4 ++++
+
+diff --git a/drivers/gpu/drm/sun4i/sun4i_tcon.c b/drivers/gpu/drm/sun4i/sun4i_tcon.c
+@@ -717,9 +717,11 @@
+ 	case DRM_MODE_ENCODER_DSI:
+ 		/* DSI is tied to special case of CPU interface */
+ 		sun4i_tcon0_mode_set_cpu(tcon, encoder, mode);
++		sun4i_tcon_set_mux(tcon, 0, encoder);
+ 		break;
+ 	case DRM_MODE_ENCODER_LVDS:
+ 		sun4i_tcon0_mode_set_lvds(tcon, encoder, mode);
++		sun4i_tcon_set_mux(tcon, 0, encoder);
+ 		break;
+ 	case DRM_MODE_ENCODER_NONE:
+ 		sun4i_tcon0_mode_set_rgb(tcon, encoder, mode);

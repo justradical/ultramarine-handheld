@@ -1,2 +1,5 @@
-# Vendor four-partition layout: p4 is the root filesystem.
-/dev/mmcblk0p4  /  ext4  defaults,x-systemd.growfs  0  1
+# Vendor four-partition layout: p4 is the root filesystem (btrfs).
+# @root is the default subvolume, so the kernel mounts it with no rootflags.
+# block-group-tree stays off (mkfs -O ^block-group-tree) for the 5.15 kernel.
+/dev/mmcblk0p4  /  btrfs  subvol=@root,compress=zstd:1,x-systemd.growfs  0  0
+/dev/mmcblk0p4  /var/games  btrfs  subvol=@games,compress=zstd:1,nofail  0  0

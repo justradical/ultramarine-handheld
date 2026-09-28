@@ -8,7 +8,7 @@ profile=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 project=$(cd -- "$profile/../.." && pwd)
 build="$project/build"
 rootfs="$build/ultramarine-rootfs"
-rootfs_image="$build/ultramarine-rootfs.ext4"
+rootfs_image="$build/ultramarine-rootfs.btrfs"
 env="$build/uboot-bsp-sd.env"
 initrd="$build/ultramarine-trimui-bsp.initrd"
 p3_source="$profile/board/vendor/sd/p3-kernel-container.img"
@@ -83,11 +83,17 @@ dd if="$assets/boot0.img" of="$out" bs=512 seek=256 conv=notrunc status=none
 dd if="$assets/boot_package.fex" of="$out" bs=512 seek=32800 conv=notrunc status=none
 
 loop=$(sudo losetup --find --show --partscan "$out")
+mnt=$(mktemp -d)
 cleanup() {
+    sudo umount "$mnt" 2>/dev/null || true
     sudo losetup -d "$loop" 2>/dev/null || true
+    rmdir "$mnt"
 }
 trap cleanup EXIT
-sudo e2fsck -fn "${loop}p4" >/dev/null
+# p4 is btrfs: verify label plus the @root default subvolume read-only.
+sudo mount -o ro "${loop}p4" "$mnt"
+test "$(sudo btrfs filesystem label "$mnt")" = "ULTRAMARINE"
+sudo btrfs subvolume get-default "$mnt" | grep -q "path @root$"
 sync
 sudo losetup -d "$loop"
 trap - EXIT

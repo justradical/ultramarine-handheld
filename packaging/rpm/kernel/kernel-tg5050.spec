@@ -1,11 +1,11 @@
 Name:           kernel-tg5050
 Version:        7.2.0
-Release:        2.tg5050%{?dist}
+Release:        3.tg5050%{?dist}
 Summary:        Fedora-style alternate mainline kernel for TrimUI Smart Pro S
 License:        GPL-2.0-only
 URL:            https://github.com/torvalds/linux
 Source0:        https://cdn.kernel.org/pub/linux/kernel/v7.x/linux-7.2.tar.xz
-Source2:        https://github.com/MidG971/trimui_mainline_dts/archive/50ff20b529773e6237fab2f5f48ac2981fffce5a.tar.gz
+Source2:        https://github.com/MidG971/trimui_mainline_dts/archive/7ece8ff4113da91efd3a6324745454bf056a214e.tar.gz
 Source3:        https://raw.githubusercontent.com/warpme/minimyth2/97b9429b90db1fca1fe3b93a112fb739b0c5452d/script/kernel/linux-7.1/files/3401-net-wireless-backport-aic8800-sdio-v2025_0926_91c9dae5-mm2.patch
 Source4:        https://raw.githubusercontent.com/warpme/minimyth2/97b9429b90db1fca1fe3b93a112fb739b0c5452d/script/kernel/linux-7.1/files/3401-net-wireless-backport-aic8800-sdio-v2025_0926_91c9dae5-mm2-fix-kernel7.1.patch
 Source1000:      trimui.config
@@ -47,6 +47,9 @@ Patch1029: 0032-pinctrl-sunxi-A523-fix-voltage-withstand-encoding.patch
 Patch1030: 0033-mmc-pwrseq-simple-tolerate-missing-reset-controller.patch
 Patch1031: 0034-Input-sun4i-lradc-keys-set-HOLD_KEY_EN-for-A523-r329.patch
 Patch1032: 0035-ASoC-sun4i-codec-A523-enable-Line-Out-ramp-and-VRP-LDO.patch
+Patch1033: 0036-mfd-axp20x-restart-the-AXP717-via-SOFT_PWROFF.patch
+Patch1034: 0037-drm-sun4i-tcon-top-park-other-mixer-on-collision.patch
+Patch1035: 0038-drm-sun4i-tcon-set-output-mux-for-dsi-lvds.patch
 
 
 
@@ -118,7 +121,7 @@ aic8800_btlpm; it does not compile anything on the target device.
 
 %prep
 %autosetup -n linux-7.2 -p1 -N
-%autopatch -p1 -m 1001 -M 1032
+%autopatch -p1 -m 1001 -M 1035
 mkdir integration
 tar -xf %{SOURCE2} -C integration --strip-components=1
 cp integration/kernel/trimui.config trimui.config

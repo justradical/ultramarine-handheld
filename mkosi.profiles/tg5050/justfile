@@ -59,11 +59,27 @@ bsp-sd-rootfs: bsp-custom-rpms
     test -x {{build_dir}}/ultramarine-rootfs/sbin/init
 
 bsp-sd-rootfs-image: bsp-sd-rootfs
-    sudo rm -f {{build_dir}}/ultramarine-rootfs.ext4
-    truncate -s 2G {{build_dir}}/ultramarine-rootfs.ext4
-    sudo mkfs.ext4 -F -L ULTRAMARINE -d {{build_dir}}/ultramarine-rootfs \
-        {{build_dir}}/ultramarine-rootfs.ext4
-    sudo e2fsck -fn {{build_dir}}/ultramarine-rootfs.ext4
+    #!/usr/bin/env bash
+    # p4 is btrfs: @root (default subvolume, so no kernel rootflags needed)
+    # plus @games for /var/games. block-group-tree stays off
+    # (-O ^block-group-tree) for the 5.15 BSP kernel.
+    set -euo pipefail
+    img="{{build_dir}}/ultramarine-rootfs.btrfs"
+    sudo rm -f "$img"
+    truncate -s 2G "$img"
+    sudo mkfs.btrfs -f -L ULTRAMARINE -O ^block-group-tree "$img"
+    mnt="$(mktemp -d)"
+    cleanup() { sudo umount "$mnt" 2>/dev/null || true; rmdir "$mnt"; }
+    trap cleanup EXIT
+    sudo mount -o loop "$img" "$mnt"
+    sudo btrfs subvolume create "$mnt/@root"
+    sudo btrfs subvolume create "$mnt/@games"
+    sudo cp -a "{{build_dir}}/ultramarine-rootfs/." "$mnt/@root/"
+    sudo sh -c 'mv "$1/@root/var/games/"* "$1/@games/" 2>/dev/null || true; mkdir -p "$1/@root/var/games"' _ "$mnt"
+    sudo btrfs subvolume set-default "$mnt/@root"
+    sudo btrfs property set "$mnt" compression zstd
+    sudo btrfs subvolume get-default "$mnt" | grep -q "path @root$"
+    test "$(sudo btrfs filesystem label "$mnt")" = "ULTRAMARINE"
 
 # Build the vendor-contract four-partition BSP SD image without changing the
 # existing mainline image target.
@@ -77,7 +93,7 @@ bsp-custom-rpms:
     mkdir -p {{build_dir}}/anda-rpms
     rm -f {{build_dir}}/anda-rpms/kernel-tg5050-bsp-custom*.rpm
     cd {{project}} && anda build -rrpmbuild --rpm-target aarch64 \
-        packaging/rpm/bsp-custom/pkg
+        packaging/rpm/bsp-custom
     for rpm in {{project}}/anda-build/rpm/rpms/kernel-tg5050-bsp-custom*.rpm; do \
         test -f "$rpm"; install -m 0644 "$rpm" {{build_dir}}/anda-rpms/; \
     done
