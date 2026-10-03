@@ -1,1 +1,1 @@
-console=ttyMSM0,115200 console=tty0 rootwait loglevel=4
+console=ttyMSM0,115200 console=tty0 root=PARTUUID=158d8d6e-c5d7-44b1-b8e8-f16253220963 rootwait loglevel=4

@@ -23,9 +23,10 @@ or the ROCKNIX ABL used by armada:
 - UEFI loads systemd-boot from the ESP (p1).
 - systemd-boot loads the kernel, the mkosi-built systemd initrd and
   `qcom/sm4450-anbernic-rg55g1.dtb` from the ESP.
-- The root partition (p2) uses the discoverable root partition type, so
-  systemd-gpt-auto-generator mounts it without a `root=` argument. On first
-  boot systemd-repart grows it into the rest of the card.
+- The root partition (p2) has a fixed PARTUUID passed as `root=PARTUUID=`
+  from `/etc/kernel/cmdline`, rather than relying on gpt-auto discovery, which
+  needs EFI runtime variables that Qualcomm UEFI often lacks. On first boot
+  systemd-repart grows it into the rest of the card.
 
 Storage, display, SoC clocks and interconnect are built into the kernel, so the
 initrd carries no modules.
