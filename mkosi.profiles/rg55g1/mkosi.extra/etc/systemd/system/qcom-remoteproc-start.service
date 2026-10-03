@@ -1,0 +1,15 @@
+[Unit]
+Description=Start Qualcomm remoteprocs that failed to boot from the initrd
+# The initrd loads qcom_q6v5_pas before the rootfs (and its DSP firmware) is
+# mounted, so ADSP/WPSS auto-boot fails with -ENOENT and is never retried.
+DefaultDependencies=no
+After=local-fs.target systemd-udev-settle.service systemd-udev-trigger.service
+Before=NetworkManager.service sysinit.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/libexec/qcom-remoteproc-start
+
+[Install]
+WantedBy=sysinit.target

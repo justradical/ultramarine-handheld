@@ -1,4 +1,5 @@
 enable rg55g1-usb-gadget.service
+enable qcom-remoteproc-start.service
 enable serial-getty@ttyMSM0.service
 enable serial-getty@ttyGS0.service
 enable bluetooth.service

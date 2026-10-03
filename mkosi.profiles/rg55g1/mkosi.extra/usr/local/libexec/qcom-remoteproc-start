@@ -1,0 +1,10 @@
+#!/bin/sh
+# Boot any remoteproc left offline because its firmware was not reachable
+# from the initrd.
+for r in /sys/class/remoteproc/remoteproc*; do
+    [ -e "$r/state" ] || continue
+    if [ "$(cat "$r/state")" = offline ]; then
+        echo start > "$r/state" && echo "started $(cat "$r/name")"
+    fi
+done
+exit 0

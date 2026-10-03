@@ -29,7 +29,12 @@ or the ROCKNIX ABL used by armada:
   systemd-repart grows it into the rest of the card.
 
 Storage, display, SoC clocks and interconnect are built into the kernel, so the
-initrd carries no modules.
+initrd does not need any modules. Despite `KernelModulesInitrd=no`, the built
+image still ships a `kernel-modules.initrd`, and udev in the initrd loads
+`qcom_q6v5_pas` before the root partition, which holds the ADSP/WPSS firmware,
+is mounted. Their auto-boot then fails with `-ENOENT` and is never retried, so
+`qcom-remoteproc-start.service` starts any remoteproc still offline once the
+rootfs is up. Without it, neither wifi (WPSS) nor audio (ADSP) come up.
 
 ## Build
 
